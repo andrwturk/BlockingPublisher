@@ -8,12 +8,12 @@ let arrayPublisher = [1, 2, 3, 4, 5].publisher
 let array = try? arrayPublisher.toBlocking().toArray()
 XCTAssertEqual(array, [1, 2, 3, 4, 5])
 
-
 // testing single value
 let arrayPublisher = [1, 2, 3, 4, 5].publisher
 let first = try? arrayPublisher.toBlocking().first()
+XCTAssertEqual(first, 1)
 let last = try? arrayPublisher.toBlocking().last()
-XCTAssertEqual(first, 5)
+XCTAssertEqual(last, 5)
 ```
 
 ## Introduction
