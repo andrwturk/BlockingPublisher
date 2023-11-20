@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-final class BlockingPublisher<Output, Failure: Error> {
+public final class BlockingPublisher<Output, Failure: Error> {
     private let publisher: AnyPublisher<Output, Failure>
     private var cancellable: AnyCancellable?
     private let timeout: TimeInterval
@@ -20,8 +20,35 @@ final class BlockingPublisher<Output, Failure: Error> {
 }
 
 extension BlockingPublisher {
+    
+    /// Provides sequence of elements in publisher.
+    /// - Returns: Array of items in publisher from first to complete
+    /// or number of elements until timeout
+    /// - Throws: If sequence ends with error
+    public func toArray() throws -> [Output] {
+        let result = materialize()
+        return try elementsOrThrow(result)
+    }
 
-    func materialize() -> MaterializedSequenceResult<Output> {
+    /// Provides sequence of elements in publisher.
+    /// - Returns: First item in publisher
+    /// - Throws: If sequence ends with error
+    public func first() throws -> Output? {
+        let result = materialize()
+        return try elementsOrThrow(result).first
+    }
+
+    /// Provides sequence of elements in publisher.
+    /// - Returns: Last item in publisher
+    /// - Throws: If sequence ends with error
+    public func last() throws -> Output? {
+        let result = materialize()
+        return try elementsOrThrow(result).last
+    }
+    
+    /// Waits for sequence to complete
+    /// - Returns: Materialized output
+    private func materialize() -> MaterializedSequenceResult<Output> {
         var elements = [Output]()
         var completionError: Failure?
         let semaphore = DispatchSemaphore(value: 0)
@@ -46,31 +73,8 @@ extension BlockingPublisher {
             return .completed(elements: elements)
         }
     }
-
-    func toArray() throws -> [Output] {
-        let result = materialize()
-        return try elementsOrThrow(result)
-    }
-
-    func first() throws -> Output? {
-        let result = materialize()
-        return try elementsOrThrow(result).first
-    }
-
-    func last() throws -> Output? {
-        let result = materialize()
-        return try elementsOrThrow(result).last
-    }
-
-    func single(_ predicate: @escaping (Output) throws -> Bool = { _ in true }) throws -> Output {
-        let results = materialize()
-        let elements = elementsFiltered(by: predicate, from: results)
-        guard elements.count == 1 else {
-            throw BlockingError.moreThanOneElement
-        }
-        return elements[0]
-    }
-
+    
+    /// Returns elements in sequnce or throws error if sequence ends with error
     private func elementsOrThrow(_ result: MaterializedSequenceResult<Output>) throws -> [Output] {
         switch result {
         case .failed(_, let error):
@@ -79,23 +83,17 @@ extension BlockingPublisher {
             return elements
         }
     }
-
-    private func elementsFiltered(by predicate: @escaping (Output) throws -> Bool, from result: MaterializedSequenceResult<Output>) -> [Output] {
-            switch result {
-            case .completed(let elements):
-                return (try? elements.filter(predicate)) ?? []
-            case .failed(let elements, _):
-                return (try? elements.filter(predicate)) ?? []
-            }
-        }
 }
 
+/// Helper enum to pack materialized result
 enum MaterializedSequenceResult<Output> {
     case completed(elements: [Output])
     case failed(elements: [Output], error: Error)
 }
 
+/// Blocking error
 enum BlockingError: Error {
+    
+    /// sequnce ended with timeout
     case timeout
-    case moreThanOneElement
 }
