@@ -1,4 +1,4 @@
-# BlockingPublisher — test your Combine code easily.
+# BlockingPublisher — test your Combine code easily
 
 ## Sneak peak
 
